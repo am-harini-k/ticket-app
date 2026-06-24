@@ -33,12 +33,46 @@ export async function PUT(request, { params }) {
       return Response.json({ success: false, message: 'Not allowed' }, { status: 403 });
     }
 
-    const { id } = await params;
+    const { id: ticketId } = await params;
+
+    // check current ticket ownership
+    const currentTicket = await pool.query('SELECT assigned_to, team_id FROM tickets WHERE id = $1', [ticketId]);
+    if (currentTicket.rows.length === 0) {
+      return Response.json({ success: false, message: 'Ticket not found' }, { status: 404 });
+    }
+
+    const currentlyAssignedTo = currentTicket.rows[0].assigned_to;
+    const ticketTeamId = currentTicket.rows[0].team_id;
+    let ticketTeamName = null;
+
+    if (ticketTeamId !== null) {
+      const teamResult = await pool.query('SELECT name FROM teams WHERE id = $1', [ticketTeamId]);
+      ticketTeamName = teamResult.rows[0] ? teamResult.rows[0].name : null;
+    }
+
+    // rule: only TL (admin) can assign an UNASSIGNED ticket for the first time
+    // after that, only the current holder or an admin can reassign it
+    if (currentlyAssignedTo === null) {
+      if (user.role !== 'admin') {
+        return Response.json(
+          { success: false, message: 'Only the Team Lead can make the first assignment' },
+          { status: 403 }
+        );
+      }
+    } else {
+      if (user.role !== 'admin' && currentlyAssignedTo !== user.id) {
+        return Response.json(
+          { success: false, message: 'Only the person currently assigned to this ticket can reassign it' },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await request.json();
     const { assigned_to } = body;
 
     const agentCheck = await pool.query(
-      `SELECT id, name, email, role FROM users WHERE id = $1`,
+      `SELECT id, name, email, role, team_name FROM users WHERE id = $1`,
       [assigned_to]
     );
 
@@ -52,19 +86,36 @@ export async function PUT(request, { params }) {
       return Response.json({ success: false, message: 'Can only assign to an agent or admin' }, { status: 400 });
     }
 
-    const result = await pool.query(
+    if (ticketTeamId !== null && ticketTeamName) {
+      if (agent.team_name !== ticketTeamName) {
+        return Response.json(
+          { success: false, message: 'Can only assign to a member of the ticket team' },
+          { status: 400 }
+        );
+      }
+    }
+
+    await pool.query(
       `UPDATE tickets 
        SET assigned_to = $1, status = 'in_progress' 
-       WHERE id = $2 
-       RETURNING *`,
-      [assigned_to, id]
+       WHERE id = $2`,
+      [assigned_to, ticketId]
     );
 
-    if (result.rows.length === 0) {
+    const ticketQuery = await pool.query(
+      `SELECT tickets.*, assignee.name as assigned_to_name, teams.name as team_name
+       FROM tickets
+       LEFT JOIN users assignee ON tickets.assigned_to = assignee.id
+       LEFT JOIN teams ON tickets.team_id = teams.id
+       WHERE tickets.id = $1`,
+      [ticketId]
+    );
+
+    if (ticketQuery.rows.length === 0) {
       return Response.json({ success: false, message: 'Ticket not found' }, { status: 404 });
     }
 
-    const ticket = result.rows[0];
+    const ticket = ticketQuery.rows[0];
 
     await transporter.sendMail({
       from: `"Ticket App Support" <${process.env.GMAIL_USER}>`,

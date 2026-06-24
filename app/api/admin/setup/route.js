@@ -24,7 +24,7 @@ export async function POST(request) {
       const hashedPassword = await bcrypt.hash(account.password, 10);
 
       await pool.query(
-        `UPDATE users SET password = $1, must_change_password = true WHERE email = $2`,
+        `UPDATE users SET password = $1, must_change_password = true, team_name = CASE WHEN role = 'user' THEN NULL ELSE 'General Team' END WHERE email = $2`,
         [hashedPassword, account.email]
       );
 

@@ -30,9 +30,12 @@ export async function GET(request, { params }) {
     const { id } = await params;
 
     const result = await pool.query(
-      `SELECT tickets.*, users.name as user_name, users.email as user_email
+      `SELECT tickets.*, users.name as user_name, users.email as user_email,
+              assignee.name as assigned_to_name, teams.name as team_name
        FROM tickets
        JOIN users ON tickets.user_id = users.id
+       LEFT JOIN users assignee ON tickets.assigned_to = assignee.id
+       LEFT JOIN teams ON tickets.team_id = teams.id
        WHERE tickets.id = $1`,
       [id]
     );
@@ -46,13 +49,52 @@ export async function GET(request, { params }) {
 
     const ticket = result.rows[0];
 
-    // normal user can only see their own ticket
-    if (user.role !== 'admin' && ticket.user_id !== user.id) {
+    let canView = false;
+    if (user.role === 'admin') {
+      canView = true;
+    } else if (user.role === 'agent') {
+      if (ticket.assigned_to === user.id) {
+        canView = true;
+      } else {
+        // allow agents who are explicit team members
+        const teamMemberResult = await pool.query(
+          'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+          [ticket.team_id, user.id]
+        );
+        if (teamMemberResult.rows.length > 0) {
+          canView = true;
+        } else {
+          // or allow agents whose user.team_name matches the team's name
+          if (ticket.team_id) {
+            const teamResult = await pool.query('SELECT name FROM teams WHERE id = $1', [ticket.team_id]);
+            const teamName = teamResult.rows[0] ? teamResult.rows[0].name : null;
+            if (teamName && user.team_name && teamName === user.team_name) {
+              canView = true;
+            }
+          }
+        }
+      }
+    } else if (user.role === 'user') {
+      canView = ticket.user_id === user.id;
+    }
+
+    if (!canView) {
       return Response.json(
         { success: false, message: 'Not allowed' },
         { status: 403 }
       );
     }
+
+    const attachmentsResult = await pool.query(
+      `SELECT attachments.*, users.name as uploaded_by_name
+       FROM attachments
+       LEFT JOIN users ON attachments.uploaded_by = users.id
+       WHERE attachments.ticket_id = $1
+       ORDER BY attachments.created_at ASC`,
+      [id]
+    );
+
+    ticket.attachments = attachmentsResult.rows;
 
     return Response.json({
       success: true,

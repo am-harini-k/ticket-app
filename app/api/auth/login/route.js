@@ -48,6 +48,7 @@ export async function POST(request) {
         name: user.name,
         email: user.email,
         role: user.role,
+        team_name: user.team_name,
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -62,6 +63,7 @@ export async function POST(request) {
         name: user.name,
         email: user.email,
         role: user.role,
+        team_name: user.team_name,
       },
     });
 

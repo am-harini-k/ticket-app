@@ -1,0 +1,35 @@
+all done perfectly 
+now all works good, but we should made changes in correct format !
+
+assign several user id 
+assign sever agent id's
+
+if user raise tickets, that should all send to all agent id's
+
+eg: if user face issue in WhatsApp, he/she want to raise ticket. based on the description , that ticket should automatically sent to that team
+
+    the ticket should send to WhatsApp team (eg:sent to all 5 members).
+    
+    if user face issue in login issue, based on the description , that automatically sent to "login" working team
+     
+    the ticket should send to login working team(eg: sent to all 4 members)
+
+
+then the admin or TL as first assigned worker, if he is busy , he assigned to someone .then they handle or he can also assign to someone.
+so in that team, whoever resolves that issue, they can change status also anyone in the team change that status!
+
+and also any one can create tickets its either user or agent !
+ * And should add AI using gemini API key , to summarize that token clearly and that error messages and it will may help.
+ * should show correct dashboards for agent , then tickets are assigned to who and all should works correctly.
+ * Then, when the status changed as resolved or closed, the user should notify via email , their tickets are resolved or closed
+ * then for user or agent , i dont know what UI will be correct. design should by our own, but the process and information added details which should important , similar to service or Zendesk or jira.
+ * if agent also create ticket , they should also notify correctly and they should also see their progress or dashboard in based on their raised ticket in seprate place.
+
+then also tell which is important , which should add correctly if something i skipped . 
+
+Main Category Dropdown: User selects IT Support.Sub-Category Dropdown (Dynamic): Once IT Support is chosen, Javascript dynamically updates the second dropdown to show Login Issue, WiFi Problem, or Software Install.
+
+
+customer is hps3state@gmail.com
+TL is harinisabai@gmail.com
+employee harinisabai2006@gmail.com

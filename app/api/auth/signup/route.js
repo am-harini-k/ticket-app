@@ -33,8 +33,8 @@ export async function POST(request) {
 
     // Step 5 - save user to database
     const result = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, role',
-      [name, email, hashedPassword]
+      'INSERT INTO users (name, email, password, team_name) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, team_name',
+      [name, email, hashedPassword, null]
     );
 
     const newUser = result.rows[0];
